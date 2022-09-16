@@ -1,0 +1,599 @@
+---
+title: "College Football Preview 2022"
+author: "Nash Lawrence"
+output:
+  html_document:
+    df_print: paged
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r echo = FALSE}
+# list of packages require for this assignment
+packages = c("tidyverse", "ggplot2", "ggimage", "readxl")
+
+## now load or install and load
+package.check <- lapply(
+  packages,
+  FUN = function(x) {
+    if (!require(x, character.only=TRUE)) {
+      install.packages(x, dependencies=TRUE)
+      library(x, character.only=TRUE)
+    }
+  }
+)
+```
+
+## Dataset and Variable Description
+This data set is a CSV file of all college football teams in a Major 6 conference plus the two main Independent schools, with statistics on their performance last year, as well as statistics on returning/incoming players and coaches.
+
+1.) team_id: each teams unique numeric code numbered 1-77
+2.) team_name: the name of each school, some abbreviated (Ex-"UNC" for North Carolina University)
+3.) team_conference: the abbreviation of the conference the school is in (Ex- "ACC" or "PAC12")
+4.) total_wins: the number of wins each team had in the regular season in 2021 (maximum 12)
+5.) total_losses: the number of losses each team had in the regular season in 2021
+6.) conf_wins: the number of wins each team had in conference play in 2021
+7.) conf_losses: the number of losses each team had in conference play in 2021
+8.) home_wins: the number of wins each team had in their home stadium in 2021
+9.) home_losses: the number of losses each team had in their home stadium in 2021
+10.) road_wins: the number of wins each team had in road or neutral site games in 2021
+11.) road_losses: the number of losses each team had in road or neutral site games in 2021
+12.) points_perGame: the average number of points scored by each team per game in 2021
+13.) total_offense: the average number of yards gained by each team's offense per game in 2021
+14.) pass_offense: the average number of passing yards gained by each team's offense per game in 2021
+15.) run_offense: the average number of rushing yards gained by each team's offense per game in 2021
+16.) thirdDown_offense: each team's first down conversion rate on offense when facing third down in 2021
+17.) redzoneTD_offense: each team's TD conversion rate in the redzone in 2021 TD's/Redzone Trips
+18.) sacks_allowed: the number of times each team was sacked by the opposing team while on offense in 2021
+19.) ppg_allowed: the average number of points allowed per game by each team's defense in 2021
+20.) total_defense: the average number of yards allowed per game by each team's defense in 2021
+21.) pass_defense: the average number of passing yards allowed per game by each team's defense in 2021
+22.) run_defense: the average number of rushing yards allowed per game by each team's defense in 2021
+23.) thirdDown_defense: each team's third down conversion rate allowed while on defense in 2021
+24.) redzoneTD_defense: each team's TD conversion rate allowed on defense while in the redzone in 2021
+25.) team_sacks: the total number of sacks by each team's defense in 2021
+26.) turnover_margin: each team's margin in the turnover category in 2021 (turnovers forced - team turnovers)
+27.) timeOf_posession: each team's average amount of time on offense per game in 2021 (want to be 30 or higher)
+28.) returning_productionPercent: each team's percentage of production from the 2021 season that is returning for the 2022 season
+29.) transferPortal_points: graded by 247Sports, the amount of points based on quantity and quality of players from the transfer portal for the 2022 season
+30.) recruitingRankAvg_lastTwoYr: the average of each team's national ranking for the 2021 and 2022 recruiting rankings per 247Sports (2021RecruitingRank + 2022RecruitingRank)/2
+31.) new_headCoach: a boolean (Y/N) showing whether each team hired a new head coach for the 2022 season
+32.) team_logoLink: a link to a PNG image for each team's logo to display on graphs for better visuals
+
+
+## Full Dataset
+```{r}
+url <- "C:/Users/stewi/BUS440/Personal Projects/cfb_teamData.csv"
+teams_dataset <- read_csv(url)
+teams_dataset %>% head()
+```
+
+
+***Compare yards per game and points per game to see a strong correlation, and see which teams outperformed***
+***and which teams under performed their expected points, by adding a least squares regression line of best fit***
+
+```{r}
+off_scatPlot <- ggplot(data = teams_dataset, aes(x = total_offense, y = points_perGame))
+off_scatPlot + labs(x = "Yards Per Game\n", y = "Points Per Game\n", title = "Offense: Yards vs Points Correlation") + theme(plot.title = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(250,325,400,475,560)) + scale_y_continuous(breaks=c(14,20,26,32,40,46)) + geom_point() + geom_smooth(method = "lm") + geom_image(aes(image=team_logoLink), size=.065)
+```
+
+```{r}
+cor(teams_dataset$points_perGame, teams_dataset$total_offense)
+```
+##Relate teams off the line with explosive plays graph, talent, and conversion rates
+
+***Teams that under perform in points per game based on yards per game***
+```{r}
+underPerform_offense <- teams_dataset %>%
+  summarise("team_name" = teams_dataset$team_name,"yards_perPoint" = teams_dataset$total_offense/teams_dataset$points_perGame,"win_total" = teams_dataset$total_wins, "turnover_margin" = teams_dataset$turnover_margin, "timeOf_possession" = teams_dataset$timeOf_posession, "third_downO" = teams_dataset$thirdDown_offense, "Redzone_off" = teams_dataset$redzoneTD_offense) %>%
+  filter(yards_perPoint > mean(yards_perPoint))
+
+underPerform_offense <- underPerform_offense[order(-underPerform_offense$yards_perPoint),]
+underPerform_offense
+```
+
+
+
+
+
+
+***Defensive Points Given up vs Defensive Yards given up***
+
+```{r}
+def_scatplot <- ggplot(data = teams_dataset, aes(x = total_defense, y = ppg_allowed))
+def_scatplot + labs(x = "Yards Allowed Per Game\n", y = "Points Per Game Allowed", title = "Defense: Yards vs Points Allowed") + theme(plot.title = element_text(hjust = 0.5)) + scale_x_reverse(breaks=c(240,310,380,450,520)) + scale_y_reverse(breaks=c(9,14,18,22,26,30,34,38,43)) + geom_point() + geom_smooth(method = "lm") + geom_image(aes(image=team_logoLink), size=.065)
+```
+
+```{r}
+cor(teams_dataset$total_defense, teams_dataset$ppg_allowed)
+```
+
+
+***Total Offense vs Total Defense, separated by .500 or better in conference***
+
+```{r}
+yardage_totals <- teams_dataset %>%
+  mutate(g_name = ifelse(conf_wins >= conf_losses, ".500 or better in Conference", "Losing Record in Conference")) %>%
+  ggplot(aes(x = total_offense, y = total_defense))
+yardage_totals + labs(x = "Offensive Yards per Game\n", y = "Defensive Yards Allowed per Game\n", title = "Yardage Totals: Offense vs Defense", subtitle = "Dotted Lines = National Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(250,325,400,475,560)) + scale_y_reverse(breaks=c(240.8,271.6,302.4,333.2,364,394.8,425.6,456.4,487.2,518)) + geom_point() + geom_vline(xintercept = median(teams_dataset$total_offense), linetype = 2) + geom_hline(yintercept = median(teams_dataset$total_defense), linetype = 2) + facet_grid(~ g_name) + geom_image(aes(image=team_logoLink), size=.07)
+```
+
+***Scoring Offense vs Scoring Defense, separated by turnover margin (1 or more)***
+
+```{r}
+scoring_totals <- teams_dataset %>%
+  mutate(g_name = ifelse(turnover_margin >= 1, "Positive Turnover Margin", "Even (0) or Negative Turnover Margin")) %>%
+  ggplot(aes(x = points_perGame, y = ppg_allowed))
+scoring_totals + labs(x = "Offensive Points per Game\n", y = "Defensive Points per Game Allowed\n", title = "Scoring Totals: Offense vs Defense", subtitle = "Dotted Lines = National Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(14,22,30,38,46)) + scale_y_reverse(breaks=c(9,14,18,22,26,30,34,38,43)) + geom_point() + geom_vline(xintercept = median(teams_dataset$points_perGame), linetype = 2) + geom_hline(yintercept = median(teams_dataset$ppg_allowed), linetype = 2) + facet_grid(~ g_name) + geom_image(aes(image=team_logoLink), size=.075)
+```
+##better defense = better turnover margin
+
+
+***combine the Offense and Defense graphs and make a points and yardage differential (points/yards per - points/yards allowed)***
+
+```{r}
+team_margin <- teams_dataset %>%
+  select(team_name) %>%
+  summarise("team_logoLink" = teams_dataset$team_logoLink, "team_name" = teams_dataset$team_name, "ppg_margin" = teams_dataset$points_perGame - teams_dataset$ppg_allowed, "yard_margin" = teams_dataset$total_offense - teams_dataset$total_defense, "total_wins" = teams_dataset$total_wins, "turnover_margin" = teams_dataset$turnover_margin, "sack_margin" = teams_dataset$team_sacks - teams_dataset$sacks_allowed, "conf_wins" = teams_dataset$conf_wins, "conf_losses" = teams_dataset$conf_losses) 
+
+team_margin <- team_margin[order(-team_margin$ppg_margin),]
+team_margin
+```
+
+```{r}
+margin_plot <- ggplot(data = team_margin, aes(x = yard_margin, y = ppg_margin))
+margin_plot + labs(x = "Yard Differential Average\n", y = "Winning/Losing Margin per Game\n", title = "Yardage Margin vs Points Margin", subtitle = "Red Line = 0 \n Black Line = National Average") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(-165,-74,16,106,195)) + scale_y_continuous(breaks=c(-22,-9,4,17,30)) + geom_point() + geom_vline(xintercept = mean(team_margin$yard_margin), linetype = 2) + geom_hline(yintercept = mean(team_margin$ppg_margin), linetype = 2) + geom_vline(xintercept = 0, colour = "red", linetype = 2) + geom_hline(yintercept = 0, colour = "red", linetype = 2) + geom_smooth(method = "lm", se = FALSE) + geom_image(aes(image=team_logoLink), size=.06,)
+```
+
+
+***Turnover Margin vs Win Total of teams with a below average yardage margin, but a positive point margin***
+```{r}
+turnover_winsFilter <- team_margin %>%
+  filter(yard_margin < mean(yard_margin), ppg_margin >= 0) %>%
+  ggplot(aes(x = turnover_margin, y = total_wins))
+turnover_winsFilter + labs(x = "2021 Season Turnover Margin", y = "2021 Win Total", title = "Turnover Margin vs Win Total", subtitle = "Only teams with a below average yardage margin and a points margin average over 0 listed \n Red Line = 0, Black Line = National Average Turnover Margin") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(-5,-3,-1,1,3,5,7,11)) + scale_y_continuous(breaks=c(5,6,7,8,9,10)) + geom_vline(xintercept = mean(teams_dataset$turnover_margin), linetype = 2) + geom_vline(xintercept = 0, linetype = 2, colour = "red") + geom_point() + geom_image(aes(image=team_logoLink), size=.07,)
+```
+
+***Turnover Margin vs Win Total of teams with above average yardage and winning margins***
+
+```{r}
+aboveAvg_margins <- team_margin %>%
+  filter(yard_margin > mean(team_margin$yard_margin), ppg_margin > mean(team_margin$ppg_margin))
+
+head(aboveAvg_margins)
+```
+
+
+```{r}
+aboveAvg_plot <- ggplot(data = aboveAvg_margins, aes(x = turnover_margin, y = total_wins))
+aboveAvg_plot + labs(x = "2021 Season Turnover Margin\n", y = "2021 Win Total\n", title = "Turnover Margin vs Win Total", subtitle = "Only teams with an above average yardage and winning margin included \n Red Line = 0, Black Line = National Average Turnover Margin") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(-11,-5,1,4,7,11,14)) + scale_y_continuous(breaks=c(3,4,5,6,7,8,9,10,11,12)) + geom_vline(xintercept = mean(teams_dataset$turnover_margin), linetype = 2) + geom_vline(xintercept = 0, linetype = 2, colour = "red") + geom_point() + geom_smooth(method = "lm") + geom_image(aes(image=team_logoLink), size=.07,)
+```
+
+
+
+***Sack Margin vs Turnover Margin***
+
+```{r}
+sackTO_margin <- team_margin%>%
+  mutate(g_name = ifelse(conf_wins >= conf_losses, "0.500 or better in Conference Games", "Losing Record in Conference")) %>%
+  ggplot(aes(x = sack_margin, y = turnover_margin))
+sackTO_margin + labs(x = "Sack Margin (Sacks - Sacks Allowed)", y = "2021 Season Turnover Margin", title = "Sack Margin vs Turnover Margin", subtitle = "X-Axis labels adjusted for each graph \n Dotted Line = 0") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_y_continuous(breaks=c(-17,-14,-11,-8,-5,-2,1,4,7,10,14)) + scale_x_continuous(breaks=c(-21,-13,-5,3,11,19,27,35,42)) + geom_point() + geom_vline(xintercept = 0, linetype = 2) + geom_hline(yintercept = 0, linetype = 2) + facet_grid(~ g_name, scales = "free_x") + geom_image(aes(image=team_logoLink), size=.07,)
+```
+
+***Team Sacks vs Run Defense, separated by 3rd down defense (median)***
+
+```{r}
+runD_sacks <- teams_dataset %>%
+  mutate(g_name = ifelse(thirdDown_defense < median(teams_dataset$thirdDown_defense), "Top Half of Third Down Defenses", "Bottom Half of Third Down Defenses")) %>%
+  ggplot(aes(x = run_defense, y = team_sacks))
+runD_sacks + labs(x = "Rushing yards Allowed per Game\n", y = "Sacks on Defense 2021\n", title = "Defensive Front 7: Team Sacks vs Rush Defense", subtitle = "X-Axis Labels Adjusted by Graph \n Dotted Lines = National Average") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_reverse(breaks=c(65.2,111.2,157.2,203.2,250.4)) + scale_y_continuous(breaks=c(9,15,21,27,33,39,45,51,57)) + geom_point() + geom_vline(xintercept = mean(teams_dataset$run_defense), linetype = 2) + geom_hline(yintercept = mean(teams_dataset$team_sacks), linetype = 2) + stat_smooth(method = "lm", se = FALSE) + facet_grid(~ g_name, scales = "free_x") + geom_image(aes(image=team_logoLink), size=.07,)
+```
+
+##Michigan State is well above average in sacks and rush defense, but is on the bottom half of
+##third down defense because their pass defense was dead last in the nation.
+##Right graph shows how important a good DLine is, with an obvious trend of better rushing defenses
+##having more sacks.
+##Teams on left graph in the top right section should have bad pass defenses causing 3rdDown% to be bad,
+##teams on the right graph in the lower left section should have good pass defenses, making up for the lack
+##of the front seven and helping them be good at 3rdDown%. Compare the averages of the teams in those sections
+
+***Teams below average in run defense and sacks, above average in 3rd down defense***
+
+```{r}
+good_passD <- teams_dataset %>%
+  filter(thirdDown_defense < median(teams_dataset$thirdDown_defense), run_defense > mean(teams_dataset$run_defense), team_sacks < mean(teams_dataset$team_sacks)) %>%
+  select(team_name, pass_defense)
+
+good_passD
+```
+
+```{r}
+avg_gPassD <- mean(good_passD$pass_defense)
+avg_gPassD
+```
+```{r}
+passD_avg <- mean(teams_dataset$pass_defense)
+passD_avg
+```
+
+***Teams with above average run defense and sacks, below average 3rd down defense***
+```{r}
+bad_passD <- teams_dataset %>%
+  filter(thirdDown_defense > median(teams_dataset$thirdDown_defense), run_defense < mean(teams_dataset$run_defense), team_sacks > mean(teams_dataset$team_sacks)) %>%
+  select(team_name, pass_defense)
+
+bad_passD
+```
+
+```{r}
+avgBad_passD <- mean(bad_passD$pass_defense)
+avgBad_passD
+```
+
+
+***Team Sacks vs Pass Defense, separated by Third Down Defense***
+
+```{r}
+teamSacks_passD <- teams_dataset %>%
+  mutate(g_name = ifelse(thirdDown_defense < median(teams_dataset$thirdDown_defense), "Top Half of Third Down Defenses", "Bottom Half of Third Down Defenses")) %>%
+  ggplot(aes(x = pass_defense, y = team_sacks))
+teamSacks_passD + labs(x = "Passing yards Allowed per Game\n", y = "Sacks on Defense 2021\n", title = "Team Sacks vs Pass Defense", subtitle = "Black Lines = National Average, Red Line = 25th Percentile \n X-Axis Labels Adjusted by Graph") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_reverse(breaks=c(143.3,191.1,240.5,289.1,337.7)) + scale_y_continuous(breaks=c(9,15,21,27,33,39,45,51,57)) + geom_point() + geom_vline(xintercept = mean(teams_dataset$pass_defense), linetype = 2) + geom_vline(xintercept = quantile(teams_dataset$pass_defense, probs = 0.75), linetype = 2, colour = "red") + geom_hline(yintercept = mean(teams_dataset$team_sacks), linetype = 2) + facet_grid(~ g_name, scales = "free_x") + geom_image(aes(image=team_logoLink), size=.07,)
+```
+
+
+***Sacks Allowed vs Rush Offense, separated by third down offense***
+
+```{r}
+sacksGiven_runO <- teams_dataset %>%
+  mutate(g_name = ifelse(thirdDown_offense > median(teams_dataset$thirdDown_offense), "Top Half of Third Down Offenses", "Bottom Half of Third Down Offenses")) %>%
+  ggplot(aes(x = run_offense, y = sacks_allowed))
+sacksGiven_runO + labs(x = "Rushing Yards Per Game\n", y = "Sacks Given up 2021\n", title = "Sacks Allowed vs Rush Offense", subtitle = "Red Line = 20th Percentile \n Green Line = 80th Percentile") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(63.2,104.3,145.4,186.6,227.8)) + scale_y_reverse(breaks=c(13,17,21,25,29,33,37,41,45,49)) + geom_point() + facet_grid(~ g_name) + stat_smooth(method = "lm", se = FALSE) + geom_vline(xintercept = quantile(teams_dataset$run_offense, probs = 0.2), linetype = 2, colour = "red") + geom_vline(xintercept = quantile(teams_dataset$run_offense, probs = 0.8), linetype = 2, colour = "dark green") + geom_hline(yintercept = quantile(teams_dataset$sacks_allowed, probs = 0.8), linetype = 2, colour = "red") + geom_hline(yintercept = quantile(teams_dataset$sacks_allowed, probs = 0.2), linetype = 2, colour = "dark green") + geom_image(aes(image=team_logoLink), size=.07,)
+```
+#Determinant = Pass Offense
+
+
+***Sacks Allowed vs Pass Offense, separated by Third Down Offense***
+
+```{r}
+passO_sacksGiven <- teams_dataset %>%
+  mutate(g_name = ifelse(thirdDown_offense >= median(teams_dataset$thirdDown_offense), "Top Half of Third Down Offenses", "Bottom Half of Third Down Offenses")) %>%
+  ggplot(aes(x = pass_offense, y = sacks_allowed))
+passO_sacksGiven + labs(x = "Passing Yards Per Game\n", y = "Sacks Given up 2021\n", title = "Sacks Allowed vs Passing Offense", subtitle = "X-Axis Labels Adjusted by Graph \n Red Line = 20th Percentile, Green Line = 80th Percentile \n Middle Line = National Average") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_y_reverse(breaks=c(13,17,21,25,29,33,37,41,45,49)) + scale_x_continuous(breaks=c(56.8,140.8,224.8,308.8,392.6)) + geom_point() + facet_grid(~ g_name, scales = "free_x") + geom_vline(xintercept = mean(teams_dataset$pass_offense), linetype = 2) + geom_vline(xintercept = quantile(teams_dataset$pass_offense, probs = 0.2), linetype = 2, colour = "red") + geom_vline(xintercept = quantile(teams_dataset$pass_offense, probs = 0.8), linetype = 2, colour = "dark green") + stat_smooth(method = "lm", se = FALSE) + geom_image(aes(image=team_logoLink), size=.075,)
+```
+#Determinant: Run Offense
+
+
+***Run offense vs Pass offense separated by 3rd down Offense***
+
+```{r}
+pass_runO <- teams_dataset %>%
+  mutate(g_name = ifelse(thirdDown_offense >= median(teams_dataset$thirdDown_offense), "Top Half of Third Down Offenses", "Bottom Half of Third Down Offenses")) %>%
+  ggplot(aes(x = pass_offense, y = run_offense))
+pass_runO + labs(x = "Passing Yards Per Game\n", y = "Rushing Yards Per Game\n", title = "Offensive Totals: Passing vs Rushing Offense", subtitle = "X-Axis Labels Adjusted by Graph \n Dotted Lines = Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(56.8,140.8,224.8,308.8,392.6)) + scale_y_continuous(breaks=c(63.2,84.3,105.4,126.5,147.6,168.7,189.8,208.8,227.8)) + geom_point() + facet_grid(~ g_name, scales = "free_x") + geom_vline(xintercept = median(teams_dataset$pass_offense), linetype = 2) + geom_hline(yintercept = median(teams_dataset$run_offense), linetype = 2) + stat_smooth(method = "lm", se = FALSE) + geom_image(aes(image=team_logoLink), size=.075,)
+```
+#What is more important to a good third down offense based on results
+
+
+***3rd Down Offense vs Redzone Offense, separated by scoring offense***
+
+```{r}
+off_conversion <- teams_dataset %>%
+  mutate(g_name = ifelse(points_perGame >= median(teams_dataset$points_perGame), "Top Half of Scoring Offenses", "Bottom Half of Scoring Offenses")) %>%
+  ggplot(aes(x = thirdDown_offense, y = redzoneTD_offense))
+off_conversion + labs(x = "Third Down Conversion Rate\n", y = "Redzone TD Conversion Rate\n", title = "Offensive Conversion Rates: 3rd Down vs Redzone Offense", subtitle = "X-Axis Labels Adjusted by Graph \n Black Dotted Lines = National Median \n Red Dotted Lines = 25th Percentile") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(.28,.342,.404,.466,.528)) + scale_y_continuous(breaks=c(.308,.358,.408,.458,.508,.558,.608,.658,.708,.758)) + geom_point() + stat_smooth(method = "lm", se = FALSE) + geom_vline(xintercept = median(teams_dataset$thirdDown_offense), linetype = 2) + geom_vline(xintercept = quantile(teams_dataset$thirdDown_offense, probs = 0.25), linetype = 2, colour = "red") + geom_hline(yintercept = quantile(teams_dataset$redzoneTD_offense, probs = 0.25), linetype = 2, colour = "red") + geom_hline(yintercept = median(teams_dataset$redzoneTD_offense), linetype = 2) + facet_grid(~ g_name, scales = "free_x") + geom_image(aes(image=team_logoLink), size=.075,)
+```
+#How can it relate to teams being under/over the line for offense yardsVpoints
+
+
+***Pass Offense vs 3rd Down Offense***
+
+```{r}
+thirdOff_passOff <- ggplot(data = teams_dataset, aes(x = pass_offense, y = thirdDown_offense))
+thirdOff_passOff + labs(x = "Passing Offense\n", y = "Third Down Conversion Rate\n", title = "Pass Offense vs Third Down Offense", subtitle = "Dotted Lines = National Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(56.8,140.8,224.8,308.8,392.6)) + scale_y_continuous(breaks=c(.28,.342,.404,.466,.528)) + geom_point() + geom_vline(xintercept = median(teams_dataset$pass_offense), linetype = 2) + geom_hline(yintercept = median(teams_dataset$thirdDown_offense), linetype = 2) + stat_smooth(method = "lm")  + geom_image(aes(image=team_logoLink), size=.065,)
+```
+```{r}
+cor(teams_dataset$thirdDown_offense, teams_dataset$pass_offense)
+```
+
+#Compare top left corner run offense vs bottom right corner run offense
+
+
+***Rushing Offense vs Third Down Offense***
+
+```{r}
+rushO_thirdOff <- ggplot(data = teams_dataset, aes(x = run_offense, y = thirdDown_offense))
+rushO_thirdOff + labs(x = "Rushing Offense\n", y = "Third Down Conversion Rate\n", title = "Rush Offense vs Third Down Offense", subtitle = "Dotted Lines = National Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(63.2,104.3,145.4,186.6,227.8)) + scale_y_continuous(breaks=c(.28,.342,.404,.466,.528)) + geom_point() + geom_vline(xintercept = median(teams_dataset$run_offense), linetype = 2) + geom_hline(yintercept = median(teams_dataset$thirdDown_offense), linetype = 2) + stat_smooth(method = "lm", se = FALSE) + geom_image(aes(image=team_logoLink), size=.065,)
+```
+```{r}
+cor(teams_dataset$thirdDown_offense, teams_dataset$run_offense)
+```
+
+#Compare top left passing yards vs bottom right passing yards
+
+***Pass Offense vs Redzone Offense***
+
+```{r}
+redzoneO_passOff <- ggplot(data = teams_dataset, aes(x = pass_offense, y = redzoneTD_offense))
+redzoneO_passOff + labs(x = "Passing Offense\n", y = "Redzone TD Conversion Rate\n", title = "Pass Offense vs Redzone Offense", subtitle = "Dotted Lines = National Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(56.8,140.8,224.8,308.8,392.6)) + scale_y_continuous(breaks=c(.308,.358,.408,.458,.508,.558,.608,.658,.708,.758)) + geom_point() + geom_vline(xintercept = median(teams_dataset$pass_offense), linetype = 2) + geom_hline(yintercept = median(teams_dataset$redzoneTD_offense), linetype = 2) + geom_image(aes(image=team_logoLink), size=.065,)
+```
+
+***Rush Offense vs Redzone Offense***
+
+```{r}
+redzoneO_rushOff <- ggplot(data = teams_dataset, aes(x = run_offense, y = redzoneTD_offense))
+redzoneO_rushOff + labs(x = "Rushing Offense\n", y = "Redzone TD Conversion Rate\n", title = "Rush Offense vs Redzone Offense", subtitle = "Dotted Lines = National Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(63.2,104.3,145.4,186.6,227.8)) + scale_y_continuous(breaks=c(.308,.358,.408,.458,.508,.558,.608,.658,.708,.758)) + geom_point() + geom_vline(xintercept = median(teams_dataset$run_offense), linetype = 2) + geom_hline(yintercept = median(teams_dataset$redzoneTD_offense), linetype = 2) + geom_image(aes(image=team_logoLink), size=.065,)
+```
+
+
+***Run Defense vs Pass Defense, separated by Third Down Defense***
+
+```{r}
+run_passD <- teams_dataset %>%
+  mutate(g_name = ifelse(thirdDown_defense <= median(teams_dataset$thirdDown_defense), "Top Half of Third Down Defenses", "Bottom Half of Third Down Defenses")) %>%
+  ggplot(aes(x = pass_defense, y = run_defense))
+run_passD + labs(x = "Passing Yards Allowed Per Game\n", y = "Rushing Yards Allowed Per Game\n", title = "Defensive Totals: Passing vs Rushing Defense", subtitle = "X-Axis Labels Adjusted by Graph \n Dotted Lines = Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_reverse(breaks=c(143.3,191.1,240.5,289.1,337.7)) + scale_y_reverse(breaks=c(65.2,102.2,139.3,176.3,213.4,250.4)) + geom_point() + facet_grid(~ g_name, scales = "free_x") + geom_vline(xintercept = median(teams_dataset$pass_defense), linetype = 2) + geom_hline(yintercept = median(teams_dataset$run_defense), linetype = 2) + geom_image(aes(image=team_logoLink), size=.075,)
+```
+#Is rushing or passing defense more important to being a good third down defense based on graph
+
+
+***3rd Down Defense vs Red Zone Defense, separated by scoring defense***
+
+```{r}
+conversion_def <- teams_dataset %>%
+  mutate(g_name = ifelse(ppg_allowed <= median(teams_dataset$ppg_allowed), "Top Half of Scoring Defenses", "Bottom Half of Scoring Defenses")) %>%
+  ggplot(aes(x = thirdDown_defense, y = redzoneTD_defense))
+conversion_def + labs(x = "Third Down Conversion Rate Allowed\n", y = "Redzone TD Conversion Rate Allowed\n", title = "Defensive Conversion Rates: 3rd Down vs Redzone Defense", subtitle = "Dotted Lines = National Median \n X-Axis Labels Adjusted by Graph") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_reverse(breaks=c(.257,.328,.399,.470,.547)) + scale_y_reverse(breaks=c(.281,.342,.403,.464,.525,.586,.647,.708,.769,.81)) + geom_point() + stat_smooth(method = "lm", se = FALSE) + geom_vline(xintercept = median(teams_dataset$thirdDown_defense), linetype = 2) + geom_hline(yintercept = median(teams_dataset$redzoneTD_defense), linetype = 2) + facet_grid(~ g_name, scales = "free_x") + geom_image(aes(image=team_logoLink), size=.075,)
+```
+#Compare this to defense yardsVpoints graph for teams below/above the line
+
+
+***Pass Defense vs Third Down Defense***
+
+```{r}
+thirdDef_passD <- ggplot(data = teams_dataset, aes(x = pass_defense, y = thirdDown_defense))
+thirdDef_passD + labs(x = "Passing Defense\n", y = "Third Down Conversion Rate Allowed\n", title = "Pass Defense vs Third Down Defense", subtitle = "Dotted Lines = National Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_reverse(breaks=c(143.3,191.1,240.5,289.1,337.7)) + scale_y_reverse(breaks=c(.257,.288,.319,.350,.381,.412,.443,.474,.504,.547)) + geom_point() + geom_vline(xintercept = median(teams_dataset$pass_defense), linetype = 2) + geom_hline(yintercept = median(teams_dataset$thirdDown_defense), linetype = 2) + geom_image(aes(image=team_logoLink), size=.065,)
+```
+
+***Run Defense vs Third Down Defense***
+
+```{r}
+runD_thirdDef <- ggplot(data = teams_dataset, aes(x = run_defense, y = thirdDown_defense))
+runD_thirdDef + labs(x = "Rushing Defense\n", y = "Third Down Conversion Rate Allowed\n", title = "Run Defense vs Third Down Defense", subtitle = "Dotted Lines = National Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_reverse(breaks=c(65.2,111.2,157.2,203.2,250.4)) + scale_y_reverse(breaks=c(.257,.288,.319,.350,.381,.412,.443,.474,.504,.547)) + geom_point() + geom_vline(xintercept = median(teams_dataset$run_defense), linetype = 2) + geom_hline(yintercept = median(teams_dataset$thirdDown_defense), linetype = 2) + stat_smooth(method = "lm", se = FALSE) + geom_image(aes(image=team_logoLink), size=.065,)
+```
+
+***Pass Defense vs Redzone Defense***
+
+```{r}
+redD_passD <- ggplot(data = teams_dataset, aes(x = pass_defense, y = redzoneTD_defense))
+redD_passD + labs(x = "Passing Defense\n", y = "Redzone TD Conversion Rate Allowed\n", title = "Pass Defense vs Redzone Defense", subtitle = "Dotted Lines = National Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_reverse(breaks=c(143.3,191.1,240.5,289.1,337.7)) + scale_y_reverse(breaks=c(.281,.342,.403,.464,.525,.586,.647,.708,.769,.81)) + geom_point() + geom_vline(xintercept = median(teams_dataset$pass_defense), linetype = 2) + geom_hline(yintercept = median(teams_dataset$redzoneTD_defense), linetype = 2) + geom_image(aes(image=team_logoLink), size=.065,)
+```
+
+***Rush Defense vs Redzone Defense***
+
+```{r}
+rushD_redzoneD <- ggplot(data = teams_dataset, aes(x = run_defense, y = redzoneTD_defense))
+rushD_redzoneD + labs(x = "Rushing Defense\n", y = "Redzone TD Conversion Rate Allowed\n", title = "Run Defense vs Redzone Defense", subtitle = "Dotted Lines = National Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_reverse(breaks=c(65.2,111.2,157.2,203.2,250.4)) + scale_y_reverse(breaks=c(.281,.342,.403,.464,.525,.586,.647,.708,.769,.81)) + geom_point() + geom_vline(xintercept = median(teams_dataset$run_defense), linetype = 2) + geom_hline(yintercept = median(teams_dataset$redzoneTD_defense), linetype = 2) + stat_smooth(method = "lm", se = FALSE) + geom_image(aes(image=team_logoLink), size=.065,)
+```
+
+
+
+***3rd down defense vs 3rd down offense***
+
+```{r}
+third_down <- ggplot(data = teams_dataset, aes(x = thirdDown_defense, y = thirdDown_offense))
+third_down + labs(x = "Third Down Defense Conversion Rate Allowed\n", y = "Third Down Conversion Rate Offense\n", title = "Third Down Efficiency: Offense vs Defense", subtitle = "Dotted Lines = National Average") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_reverse(breaks=c(.287,.352,.417,.482,.547)) + scale_y_continuous(breaks=c(.228,.278,.328,.378,.428,.478,.528)) + geom_vline(xintercept = mean(teams_dataset$thirdDown_defense), linetype = 2) + geom_hline(yintercept = mean(teams_dataset$thirdDown_offense), linetype = 2) + geom_point() + geom_image(aes(image=team_logoLink), size=.07,)
+```
+
+***Redzone Offense vs Redzone Defense***
+
+```{r}
+redzone_efficiency <- ggplot(data = teams_dataset, aes(x = redzoneTD_defense, y = redzoneTD_offense))
+redzone_efficiency + labs(x = "Redzone Defense TD Conversion Rate Allowed\n", y = "Redzone Offense TD Conversion Rate\n", title = "Redzone Efficiency: Offense vs Defense", subtitle = "Dotted Lines = National Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_reverse(breaks=c(.281,.413,.545,.677,.81)) + scale_y_continuous(breaks=c(.308,.358,.408,.458,.508,.558,.608,.658,.708,.758)) + geom_vline(xintercept = median(teams_dataset$redzoneTD_defense), linetype = 2) + geom_hline(yintercept = median(teams_dataset$redzoneTD_offense), linetype = 2) + geom_point() + geom_image(aes(image=team_logoLink), size=.06,)
+```
+
+
+
+
+***Recruiting Class Ranks vs 2021 Win Total, filter does not include teams with 3 wins or less***
+
+```{r}
+recruitWins_scatplot <- teams_dataset %>%
+  filter(total_wins > 3) %>%
+  ggplot(aes(x = recruitingRankAvg_lastTwoYr, y = total_wins))
+recruitWins_scatplot + labs(x = "2021/2022 Average Recruiting Class Rankings\n", y = "2021 Regular Season Win Total\n", title = "Recent Recruiting Success vs 2021 Win Totals", subtitle = "Teams with 3 or fewer wins in 2021 not included \n Dotted Lines = National Average") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(1,20,40,60,80,100,120)) + scale_y_continuous(breaks=c(4,5,6,7,8,9,10,11,12)) + geom_point() + geom_smooth(method = "lm", se = FALSE) + geom_vline(xintercept = mean(teams_dataset$recruitingRankAvg_lastTwoYr), linetype = 2) + geom_hline(yintercept = mean(teams_dataset$total_wins), linetype = 2) + geom_image(aes(image=team_logoLink), size=.065)
+```
+
+***Returning Production vs 2021 Win Total, separated by Top 45 Recruiting Rank for 2021/2022 Classes***
+
+```{r}
+returners_wins <- teams_dataset %>%
+  mutate(g_name = ifelse(recruitingRankAvg_lastTwoYr < 45.5, "Top 45 Recruiting Class 2021/2022", "Outside Top 45 in Recruiting 2021/2022")) %>%
+  ggplot(aes(x = returning_productionPercent, y = total_wins))
+returners_wins + labs(x = "Returning Production % for 2022 Season\n", y = "2021 Regular Season Win Total\n", title = "Returning Production vs 2021 Win Total", subtitle = "Dotted Line = Average Production Returning") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(37,49,61,73,85)) + scale_y_continuous(breaks=c(1,2,3,4,5,6,7,8,9,10,11,12)) + geom_point() + geom_vline(xintercept = mean(teams_dataset$returning_productionPercent), linetype = 2) + facet_grid(~ g_name) + geom_image(aes(image=team_logoLink), size=.075)
+```
+
+***Returning Productions vs Transfer Portal Points, separated by top 45 recruiting class (41 teams in top 45 on this)***
+
+```{r}
+returners_transfers <- teams_dataset %>%
+  mutate(g_name = ifelse(recruitingRankAvg_lastTwoYr < 45.5, "Top 45 Recruiting Class 2021/2022", "Outside Top 45 in Recruiting 2021/2022")) %>%
+  ggplot(aes(x = transferPortal_points, y = returning_productionPercent))
+returners_transfers + labs(x = "Transfer Portal Points\n", y = "Returning Production %\n", title = " Team Returning Production vs Transfer Portal Addition", subtitle = "Dotted Lines = National Average \n X-Axis Labels Adjusted by Graph") + theme(plot.title = element_text(hjust = 0.5)) + theme(plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(0,16,32,48,64,80,96)) + scale_y_continuous(breaks=c(40,48,56,64,72,80,88)) + geom_point() + geom_hline(yintercept = mean(teams_dataset$returning_productionPercent), linetype = 2) + geom_vline(xintercept = mean(teams_dataset$transferPortal_points), linetype = 2) + facet_grid(~ g_name, scales = "free_x") + geom_image(aes(image=team_logoLink), size=.07) 
+```
+
+
+***Returning Production vs 2021/2022 Recruiting Class Rank, separated by Transfer Portal Points***
+
+```{r}
+returners_recruits <- teams_dataset %>%
+  mutate(g_name = ifelse(transferPortal_points >= median(teams_dataset$transferPortal_points), "Top Half of Transfer Portal Rankings", "Bottom Half of Transfer Portal Rankings")) %>%
+  ggplot(aes(x = returning_productionPercent, y = recruitingRankAvg_lastTwoYr))
+returners_recruits + labs(x = "Returning Production %", y = "2021/2022 Recruiting Class Rank Average", title = "Returning Production vs Young Talent", subtitle = "Dotted Line = Average Returning Production") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(40,48,56,64,72,80,85)) + scale_y_reverse(breaks=c(1,20,40,60,80,100,120)) + geom_point() + geom_vline(xintercept = mean(teams_dataset$returning_productionPercent), linetype = 2) + facet_grid(~ g_name) + geom_image(aes(image=team_logoLink), size=.075)
+```
+
+***2021/2022 Recruiting Rankings vs Transfer Portal Points, separated by .500 or better in conference***
+
+```{r}
+transfer_recruit <- teams_dataset %>%
+  mutate(g_name = ifelse(conf_wins >= conf_losses, ".500 or better in Conference", "Losing Record in Conference")) %>%
+  ggplot(aes(x = recruitingRankAvg_lastTwoYr, y = transferPortal_points))
+transfer_recruit + labs(x = "2021/2022 Recruiting Class Rank Average\n", y = "Transfer Portal Points\n", title = "Roster Turnover: Transfer Portal Points vs 2021/2022 Recruiting Rankings", subtitle = "Dotted Lines = National Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_reverse(breaks=c(7.5,32.5,57.5,82.5,106.5)) + scale_y_continuous(breaks=c(0,9.5,19,28.5,38,47.5,57,66.5,76,85.5,95.23)) + geom_point() + geom_vline(xintercept = median(teams_dataset$recruitingRankAvg_lastTwoYr), linetype = 2) + geom_hline(yintercept = median(teams_dataset$transferPortal_points), linetype = 2) + facet_grid(~ g_name) + geom_image(aes(image=team_logoLink), size=.075)
+```
+
+
+
+***New Head Coaches Recruiting/Transfer Talent***
+
+```{r}
+newCoach_talent <- teams_dataset %>%
+  filter(new_headCoach == "Y") %>%
+  ggplot(aes(x = recruitingRankAvg_lastTwoYr, y = transferPortal_points))
+newCoach_talent + labs(x = "2021/2022 Recruiting Class Rank Average\n", y = "Transfer Portal Points\n", title = "New Head Coaches' Talent to Start With", subtitle = "Dotted Lines = National Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_reverse(breaks=c(7.5,32.5,57.5,82.5,106.5)) + scale_y_continuous(breaks=c(15.11,25.12,35.14,45.15,55.16,65.18,75.19,85.21,95.23)) + geom_point() + geom_vline(xintercept = median(teams_dataset$recruitingRankAvg_lastTwoYr), linetype = 2) + geom_hline(yintercept = median(teams_dataset$transferPortal_points), linetype = 2) + geom_image(aes(image=team_logoLink), size=.075)
+```
+
+***New Head Coaches: Returning Production vs Win Total***
+
+```{r}
+winProduction_newCoach <- teams_dataset %>%
+  filter(new_headCoach == "Y") %>%
+  ggplot(aes(x = returning_productionPercent, y = total_wins))
+winProduction_newCoach + labs(x = "Returning Production % for 2022\n", y = "2021 Win Total\n", title = "New Head Coaches: Proven Talent", subtitle = "Dotted Line = National Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(40,48,56,64,72,80,85)) + scale_y_continuous(breaks=c(3,4,5,6,7,8,9,10,11)) + geom_point() + geom_vline(xintercept = median(teams_dataset$returning_productionPercent), linetype = 2) + geom_image(aes(image=team_logoLink), size=.075)
+```
+
+
+
+***Rush Offense vs Time of Possession, separated by Third Down Offense***
+
+```{r}
+timeOP_runO <- teams_dataset %>%
+  mutate(g_name = ifelse(thirdDown_offense >= median(teams_dataset$thirdDown_offense), "Top Half of Third Down Offense", "Bottom Half of Third Down Offense")) %>%
+  ggplot(aes(x = timeOf_posession, y = run_offense))
+timeOP_runO + labs(x = "Time of Possession per Game\n", y = "Rushing Yards per Game\n", title = "Rushing Yards vs Time of Possession", subtitle = "TOP 60 Minutes total (30 = average) \n Rushing: Red Line = 25th Percentile, Green Line = 75th Percentile, Middle Line = Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(24,26,27,28,29,30,31,32,33,34,35)) + scale_y_continuous(breaks=c(63.2,84.3,105.4,126.5,147.6,168.7,189.8,208.8,227.8)) + geom_point() + geom_hline(yintercept = quantile(teams_dataset$run_offense, probs = 0.25), linetype = 2, colour = "red") + geom_hline(yintercept = quantile(teams_dataset$run_offense, probs = 0.75), linetype = 2, colour = "green") + geom_hline(yintercept = median(teams_dataset$run_offense), linetype = 2) + facet_grid(~ g_name) + geom_image(aes(image=team_logoLink), size=.065)
+```
+
+***Third Down Offense vs Time of Possession***
+
+```{r}
+timeOP_thirdO <- teams_dataset %>%
+  mutate(g_name = ifelse(run_offense >= median(teams_dataset$run_offense), "Top Half of Rushing Offense", "Bottom Half of Rushing Offense")) %>%
+  ggplot(aes(x = timeOf_posession, y = thirdDown_offense))
+timeOP_thirdO + labs(x = "Time of Possession per Game\n", y = "Third Down Conversion Rate\n", title = "Third Down Offense vs Time of Possession", subtitle = "TOP 60 Minutes total (30 = average) \n 3rd Down: Red Line = 25th Percentile, Green Line = 75th Percentile, Middle Line = Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(24,26,27,28,29,30,31,32,33,34,35)) + scale_y_continuous(breaks=c(.228,.278,.328,.378,.428,.478,.528)) + geom_point() + geom_hline(yintercept = quantile(teams_dataset$thirdDown_offense, probs = 0.25), linetype = 2, colour = "red") + geom_hline(yintercept = quantile(teams_dataset$thirdDown_offense, probs = 0.75), linetype = 2, colour = "green") + geom_hline(yintercept = median(teams_dataset$thirdDown_offense), linetype = 2) + facet_grid(~ g_name) + geom_image(aes(image=team_logoLink), size=.075)
+```
+
+
+
+***Run Defense vs Time of Possession, separated by Third Down Defense***
+
+```{r}
+runD_timeOP <- teams_dataset %>%
+  mutate(g_name = ifelse(thirdDown_defense <= median(teams_dataset$thirdDown_defense), "Top Half of Third Down Defense", "Bottom Half of Third Down Defense")) %>%
+  ggplot(aes(x = timeOf_posession, y = run_defense))
+runD_timeOP + labs(x = "Time of Possession per Game\n", y = "Rushing Yards Allowed per Game\n", title = "Rushing Defense vs Time of Possession", subtitle = "TOP 60 Minutes total (30 = average) \n Dotted Line = National Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(24,26,27,28,29,30,31,32,33,34,35)) + scale_y_reverse(breaks=c(65.2,88.6,112,135.4,158.8,182.2,205.6,229,250.4)) + geom_point() + geom_vline(xintercept = 30, linetype = 2)  + geom_hline(yintercept = median(teams_dataset$run_defense), linetype = 2) + facet_grid(~ g_name) + geom_image(aes(image=team_logoLink), size=.065)
+```
+
+***Third Down Defense vs Time of Possession, separated by Run Defense***
+
+```{r}
+timeOP_thirdD <- teams_dataset %>%
+  mutate(g_name = ifelse(run_defense <= median(teams_dataset$run_defense), "Top Half of Teams in Run Defense", "Bottom Half of Teams in Run Defense")) %>%
+  ggplot(aes(x = timeOf_posession, y = thirdDown_defense))
+timeOP_thirdD + labs(x = "Time of Possession per Game\n", y = "Third Down Defense Conversion Rate Allowed\n", title = "Third Down Defense vs Time of Possession", subtitle = "TOP 60 Minutes total (30 = average) \n Dotted Line = National Median") + theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(24,26,27,28,29,30,31,32,33,34,35)) + scale_y_reverse(breaks=c(.257,.288,.319,.350,.381,.412,.443,.474,.504,.547)) + geom_point() + geom_vline(xintercept = 30, linetype = 2)  + geom_hline(yintercept = median(teams_dataset$thirdDown_defense), linetype = 2) + facet_grid(~ g_name) + geom_image(aes(image=team_logoLink), size=.075)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+***bar graph with the average recruiting class rank average 2021/2022 for each conference***
+
+```{r}
+conference_recruit <- teams_dataset %>%
+  filter(team_conference != "Independent") %>%
+  group_by(team_conference) %>%
+  select(team_conference, recruitingRankAvg_lastTwoYr) %>%
+  summarise("recruit_avg" = mean(recruitingRankAvg_lastTwoYr, na.rm = TRUE), "Median Recruiting Average" = median(recruitingRankAvg_lastTwoYr, na.rm = TRUE), "Lowest Rank" = max(recruitingRankAvg_lastTwoYr, na.rm = TRUE), "Highest Rank" = min(recruitingRankAvg_lastTwoYr, na.rm = TRUE))
+
+conference_recruit
+```
+
+```{r}
+conference_recruitPlot <- ggplot(data = conference_recruit, (aes(x = team_conference, y = recruit_avg, fill = team_conference)))
+conference_recruitPlot + geom_bar(position = "dodge", stat = "summary", fun = "mean", color = "black", size = 1.5, bindwidth = 1.5) + labs(y = "Conferences Average 2021/2022 Classes\n", x = "", title = "2021/2022 Recruiting Class Averages by Conference", subtitle = "Independents Notre Dame(8) and BYU(66) Not Included", fill = "Conference") + theme(plot.title = element_text(hjust = 0.5)) + scale_y_continuous(breaks=c(0,10,20,30,40,50,60,70,80))
+```
+
+***Histogram to show the distribution of values for Turnover Margin***
+
+```{r}
+histo_turnoverMarg <- ggplot(data = teams_dataset, aes(x = turnover_margin))
+histo_turnoverMarg + geom_histogram(color = "black", fill = "dark green", size = 1.2, bindwidth = 1, bins = 7) + labs(x = "Turnover Margin", y = "Number of Teams per Interval\n", title = "Turnover Margin Distibrution") + theme(plot.title = element_text(hjust = 0.5)) + scale_x_continuous(breaks=c(-17,-13,-9,-5,-1,3,7,10,14)) + scale_y_continuous(breaks=c(0,3,6,9,12,15,18,21))
+```
+
+***Pie Graph showing passing offense vs rushing offense for a single team to show their balance***
+
+```{r}
+count.data <- data.frame(
+  category = c("Pass Offense", "Rush Offense"),
+  n = c(288.4,126.2),
+  perc = c(70,30)
+)
+count.data
+```
+
+```{r}
+ggplot(data = count.data, aes(x = "", y = perc, fill = category)) + geom_bar(stat = "identity", width = 1) + coord_polar("y", start = 0) + geom_text(aes(label = paste0(n, " (", perc, "%)")), position = position_stack(vjust=0.5)) + labs(x = NULL, y = NULL, fill = NULL, title = "NC State Offensive Balance") + theme_classic() + theme(axis.line = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), plot.title = element_text(hjust = 0.5))
+```
+
+***Mississippi State***
+
+```{r}
+balance_data <- data.frame(
+  category = c("Pass Offense", "Rush Offense"),
+  n = c(378.3,63.2),
+  perc = c(86,14)
+)
+balance_data
+```
+
+```{r}
+ggplot(data = balance_data, aes(x = "", y = perc, fill = category)) + geom_bar(stat = "identity", width = 1) + coord_polar("y", start = 0) + geom_text(aes(label = paste0(n, " (", perc, "%)")), position = position_stack(vjust=0.5)) + labs(x = NULL, y = NULL, fill = NULL, title = "Mississippi State Offensive Balance") + theme_classic() + theme(axis.line = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), plot.title = element_text(hjust = 0.5))
+```
+
+***Navy Offense***
+
+```{r}
+balance_data2 <- data.frame(
+  category = c("Pass Offense", "Rush Offense"),
+  n = c(56.8,226),
+  perc = c(20,80)
+)
+balance_data2
+```
+
+```{r}
+ggplot(data = balance_data2, aes(x = "", y = perc, fill = category)) + geom_bar(stat = "identity", width = 1) + coord_polar("y", start = 0) + geom_text(aes(label = paste0(n, " (", perc, "%)")), position = position_stack(vjust=0.5)) + labs(x = NULL, y = NULL, fill = NULL, title = "Navy Offensive Balance") + theme_classic() + theme(axis.line = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), plot.title = element_text(hjust = 0.5))
+```
+
+
+
+
+
+
+
+
